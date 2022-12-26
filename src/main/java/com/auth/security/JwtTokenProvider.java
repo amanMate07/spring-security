@@ -9,12 +9,15 @@ import javax.servlet.http.HttpServletRequest;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
 
+import com.auth.dao.UserDAO;
 import com.auth.entity.User;
+import com.auth.model.CustomOAuth2User;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -33,10 +36,20 @@ public class JwtTokenProvider {
 
     @Value("${app.jwtExpirationInMs}")
     private int jwtExpirationInMs;
+    
+    @Autowired
+    private UserDAO userDAO;
 
     public String generateToken(Authentication authentication) {
-
-    	User user = (User) authentication.getPrincipal();
+    	User user;
+    	if(authentication.getPrincipal().getClass().equals(CustomOAuth2User.class))
+    	{
+    		CustomOAuth2User oauthUser=(CustomOAuth2User)authentication.getPrincipal();
+    		user = userDAO.findByEmail(oauthUser.getEmail()).get();
+    	}else
+    	{
+    		user = (User) authentication.getPrincipal();
+    	}
 
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpirationInMs);
@@ -88,7 +101,7 @@ public class JwtTokenProvider {
         } catch (MalformedJwtException ex) {
             logger.error("Invalid JWT token");
         } catch (ExpiredJwtException ex) {
-        	httpServletRequest.setAttribute("expired",ex.getMessage());
+        	httpServletRequest.setAttribute("expired","Token expired");
             logger.error("Expired JWT token");
         } catch (UnsupportedJwtException ex) {
             logger.error("Unsupported JWT token");

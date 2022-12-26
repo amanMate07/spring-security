@@ -16,15 +16,28 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 import com.auth.security.JwtAuthenticationEntryPoint;
 import com.auth.security.JwtAuthenticationFilter;
+import com.auth.security.oauth.HttpCookieOAuth2AuthorizationRequestRepository;
+import com.auth.security.oauth.OAuth2AuthenticationFailureHandler;
+import com.auth.security.oauth.OAuth2AuthenticationSuccessHandler;
+import com.auth.service.CustomOAuth2UserService;
 import com.auth.service.CustomUserDetailsService;
 
 @Configuration
 @EnableWebSecurity
-@EnableGlobalMethodSecurity( securedEnabled = true,jsr250Enabled = true,prePostEnabled = true)
+@EnableGlobalMethodSecurity(securedEnabled = true, jsr250Enabled = true, prePostEnabled = true)
 public class SecurityConfig {
 
 	@Autowired
 	private CustomUserDetailsService customUserDetailsService;
+
+	@Autowired
+	private CustomOAuth2UserService customOAuth2UserService;
+
+	@Autowired
+	private OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
+
+	@Autowired
+	private OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler;
 
 	@Autowired
 	private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
@@ -33,26 +46,40 @@ public class SecurityConfig {
 	public JwtAuthenticationFilter jwtAuthenticationFilter() {
 		return new JwtAuthenticationFilter();
 	}
-	
-    @Bean
-    public AuthenticationManager authManager(HttpSecurity http) throws Exception {
-        AuthenticationManagerBuilder authenticationManagerBuilder = http.getSharedObject(AuthenticationManagerBuilder.class);
-        authenticationManagerBuilder.userDetailsService(customUserDetailsService);
-        return authenticationManagerBuilder.build();
-    }
-	
+
+	@Bean
+	public HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository() {
+		return new HttpCookieOAuth2AuthorizationRequestRepository();
+	}
+
+	@Bean
+	public AuthenticationManager authManager(HttpSecurity http) throws Exception {
+		AuthenticationManagerBuilder authenticationManagerBuilder = http
+				.getSharedObject(AuthenticationManagerBuilder.class);
+		authenticationManagerBuilder.userDetailsService(customUserDetailsService);
+		return authenticationManagerBuilder.build();
+	}
+
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http.cors().and().csrf().disable().exceptionHandling().authenticationEntryPoint(jwtAuthenticationEntryPoint)
-		.and().sessionManagement()
-        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-		.and().authorizeRequests()
-		.antMatchers("/auth/**")
-		.permitAll()
-		.antMatchers("/test").hasAnyAuthority("USER")
-		.anyRequest()
-		.authenticated()
-		.and().addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+				.and().sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
+				.authorizeRequests().antMatchers("/auth/**", "/oauth2/**", "/**").permitAll().anyRequest()
+				.authenticated().and()
+				 .oauth2Login()
+                 .authorizationEndpoint()
+                     .baseUri("/oauth2/authorize")
+                     .authorizationRequestRepository(cookieAuthorizationRequestRepository())
+                     .and()
+                 .redirectionEndpoint()
+                     .baseUri("/oauth2/callback/*")
+                     .and()
+                 .userInfoEndpoint()
+                     .userService(customOAuth2UserService)
+                     .and()
+                 .successHandler(oAuth2AuthenticationSuccessHandler)
+                 .failureHandler(oAuth2AuthenticationFailureHandler).and()
+				.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 		return http.build();
 	}
 

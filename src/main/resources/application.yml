@@ -1,0 +1,40 @@
+app:
+  jwtExpirationInMs: 60000
+  jwtSecret: 9a02115a835ee03d5fb83cd8a468ea33e4090aaaec87f53c9fa54512bbef4db8dc656c82a315fa0c785c08b0134716b81ddcd0153d2a7556f2e154912cf5675f
+  oauth2:
+    authorizedRedirectUris: http://localhost:8080/oauth2/redirect
+
+logging:
+  level:
+    org:
+      hibernate:
+        SQL: DEBUG
+server:
+  port: 8080
+spring:
+  datasource:
+    password: root
+    url: jdbc:mysql://localhost:3306/mb?useSSL=false&serverTimezone=UTC&useLegacyDatetimeCode=false
+    username: root
+  jpa:
+    show-sql: true  
+    hibernate:
+      ddl-auto: update
+      naming-strategy: org.hibernate.cfg.ImprovedNamingStrategy
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL5InnoDBDialect
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: 53439443196-imf7mlhob2ehk4bh469v7m3a9mh2vr7t.apps.googleusercontent.com
+            client-secret: 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
+            redirectUri: "{baseUrl}/oauth2/callback/{registrationId}"
+            scope:
+              - email
+              - profile
+              
+            
+  
